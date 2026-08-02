@@ -1,8 +1,8 @@
 # Vidio
 
-Vidio is a DreamOS / OE 2.6 Enigma2 plugin for Dreambox One UHD and Dreambox
-Two UHD. It keeps the video from the current DVB service, replaces its audio
-with a second DVB service, and can delay only the video in 0.1 second steps.
+Vidio is an Enigma2 plugin for DreamOS, OpenATV, OpenPLi, and compatible images.
+It keeps the video from the current DVB service, replaces its audio with a
+second DVB service, and can delay only the video in 0.1 second steps.
 
 ## How it works
 
@@ -16,13 +16,15 @@ The old ALSA injection and `selectTrack(-1)` design was removed in 0.2.0. Vidio
 now reports Running only after ffmpeg has produced packets and DreamOS has
 opened the combined stream.
 
-## Requirements
+## Targets
 
-- Dreambox One UHD or Dreambox Two UHD
-- DreamOS / OpenDreambox OE 2.6
+- Dreambox One/Two UHD on DreamOS: ARM64 `.deb`
+- ARM 32-bit Enigma2 receivers: architecture-independent `.ipk`
+- MIPS Enigma2 receivers: architecture-independent `.ipk`
 - Two correctly configured DVB tuners with access to both satellites
 - `/usr/bin/ffmpeg`
-- DreamOS streaming server on its standard local port `8001`
+- Enigma2 streaming server on its standard local port `8001`
+- IPTV playback service type `4097`
 
 The common 5-10 second video delay is timestamp-based and does not require HDD
 or USB storage. Very large delays can require substantial player memory.
@@ -31,21 +33,32 @@ or USB storage. Very large delays can require substantial player memory.
 
 ```sh
 make lint
-make deb
+make packages
 ```
 
-The package is written to `dist/`:
+Both packages are written to `dist/`:
 
 ```text
-dist/enigma2-plugin-extensions-vidio_0.2.0_arm64.deb
+dist/enigma2-plugin-extensions-vidio_0.2.1_arm64.deb
+dist/enigma2-plugin-extensions-vidio_0.2.1_all.ipk
 ```
 
-Install it and restart Enigma2:
+Install the DreamOS package:
 
 ```sh
-dpkg -i /tmp/enigma2-plugin-extensions-vidio_0.2.0_arm64.deb
+dpkg -i /tmp/enigma2-plugin-extensions-vidio_0.2.1_arm64.deb
 systemctl restart enigma2
 ```
+
+Install the ARM32/MIPS package:
+
+```sh
+opkg install /tmp/enigma2-plugin-extensions-vidio_0.2.1_all.ipk
+```
+
+`Architecture: all` is intentional: Vidio contains Python and image assets but
+no compiled CPU-specific executable. The receiver feed supplies the correct
+ARM32 or MIPS build of ffmpeg.
 
 ## Controls
 
@@ -62,6 +75,6 @@ service is restored. Runtime diagnostics are written to
 
 ## Receiver constraints
 
-DreamOS decides tuner and descrambler allocation. Starting can fail when the
+Enigma2 decides tuner and descrambler allocation. Starting can fail when the
 second tuner cannot access the selected satellite, another recording occupies
 it, or CI/softcam restrictions prevent two simultaneous decrypted streams.

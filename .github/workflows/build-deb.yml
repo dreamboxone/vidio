@@ -1,4 +1,4 @@
-name: Build deb
+name: Build packages
 
 on:
   push:
@@ -15,11 +15,17 @@ jobs:
       - name: Lint plugin syntax
         run: make lint
 
-      - name: Build deb package
-        run: make deb
+      - name: Build deb and ipk packages
+        run: make packages
 
       - name: Upload deb artifact
         uses: actions/upload-artifact@v6
         with:
           name: vidio-deb
           path: dist/*.deb
+
+      - name: Upload ipk artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: vidio-ipk
+          path: dist/*.ipk

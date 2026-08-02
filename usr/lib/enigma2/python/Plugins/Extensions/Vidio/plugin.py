@@ -49,6 +49,12 @@ def fitText(value, maximum):
     return text[:maximum - 3] + "..."
 
 
+def persistEnabled(value):
+    config.plugins.vidio.enabled.value = bool(value)
+    config.plugins.vidio.enabled.save()
+    configfile.save()
+
+
 def connectSignal(signal, callback):
     if hasattr(signal, "connect"):
         return signal.connect(callback)
@@ -240,6 +246,7 @@ class VidioEngine(object):
         self.videoConfirmed = False
         self.localRequested = False
         self.stopping = False
+        persistEnabled(True)
         try:
             with open(LOG_FILE, "w"):
                 pass
@@ -352,6 +359,7 @@ class VidioEngine(object):
         self._stopProcess()
         if restore:
             self._restoreOriginal()
+        persistEnabled(False)
         self._setState(self.ERROR, message, "error")
 
     def _stopProcess(self):
@@ -390,11 +398,13 @@ class VidioEngine(object):
         if restore and self._isLocalCurrent():
             self._restoreOriginal()
         self.stopping = False
+        persistEnabled(False)
         self._setState(self.STOPPED, "Stopped. Original channel audio is active.")
 
     def shutdown(self):
         self.pendingStart = None
         self._stopProcess()
+        persistEnabled(False)
 
 
 ENGINE = VidioEngine()
@@ -617,8 +627,6 @@ class VidioScreen(Screen):
     def engineUpdate(self, kind, message):
         if kind == "error":
             self.enabled = False
-            config.plugins.vidio.enabled.value = False
-            config.plugins.vidio.enabled.save()
         else:
             self.enabled = ENGINE.isActive()
         self.refresh()

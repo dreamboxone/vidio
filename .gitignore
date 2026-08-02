@@ -1,5 +1,6 @@
 dist/
 .build/
+.build-ipk/
 *.deb
 *.pyc
 __pycache__/
