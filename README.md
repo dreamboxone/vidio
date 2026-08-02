@@ -29,14 +29,14 @@ make deb
 The package will be written to `dist/`, for example:
 
 ```text
-dist/enigma2-plugin-extensions-vidio_0.1.2_arm64.deb
+dist/enigma2-plugin-extensions-vidio_0.1.3_arm64.deb
 ```
 
 Install it on the receiver:
 
 ```sh
-scp dist/enigma2-plugin-extensions-vidio_0.1.2_arm64.deb root@dreambox:/tmp/
-ssh root@dreambox "dpkg -i /tmp/enigma2-plugin-extensions-vidio_0.1.2_arm64.deb || apt-get -f install"
+scp dist/enigma2-plugin-extensions-vidio_0.1.3_arm64.deb root@dreambox:/tmp/
+ssh root@dreambox "dpkg -i /tmp/enigma2-plugin-extensions-vidio_0.1.3_arm64.deb || apt-get -f install"
 ```
 
 For manual testing, copy the plugin directory to the receiver:
@@ -59,7 +59,7 @@ and GUI restart, a long press on the Audio key opens the same Vidio menu.
 - `OK`: toggle Vidio On/Off or choose the selected audio service
 - `Left` / `Right`: adjust the selected Video delay option by 0.1 seconds
 - `Green`: save current settings and start if Vidio is On
-- `Red`: stop Vidio
+- `Red`: close
 - `Exit`: close
 
 ## Notes

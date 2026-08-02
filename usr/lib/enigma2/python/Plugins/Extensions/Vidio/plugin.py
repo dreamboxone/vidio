@@ -176,9 +176,8 @@ class VidioServiceBrowser(Screen):
     </screen>
     """
 
-    def __init__(self, session, callback=None):
+    def __init__(self, session):
         Screen.__init__(self, session)
-        self.callback = callback
         self.path = []
         self["title"] = Label("Bouquets")
         self["help"] = Label("OK: open/select    Exit: back")
@@ -218,9 +217,7 @@ class VidioServiceBrowser(Screen):
         if flags & eServiceReference.isDirectory:
             self.openDirectory(name, ref)
             return
-        if self.callback:
-            self.callback(name, ref.toString())
-        self.close()
+        self.close((name, ref.toString()))
 
     def cancel(self):
         if self.path:
@@ -264,9 +261,9 @@ class VidioScreen(Screen):
         self["status"] = Label("")
         self["list"] = MenuList([])
         self["note"] = Label("")
-        self["red"] = Label("Stop")
+        self["red"] = Label("Exit")
         self["green"] = Label("Save")
-        self["help"] = Label("OK select/toggle   Green save   Exit close")
+        self["help"] = Label("")
         self["actions"] = ActionMap(
             ["OkCancelActions", "DirectionActions", "ColorActions"],
             {
@@ -277,7 +274,7 @@ class VidioScreen(Screen):
                 "left": self.delayDown,
                 "right": self.delayUp,
                 "green": self.save,
-                "red": self.stop,
+                "red": self.close,
             },
             -1,
         )
@@ -346,11 +343,20 @@ class VidioScreen(Screen):
             self.delayUp()
 
     def chooseAudio(self):
-        self.session.open(VidioServiceBrowser, callback=self.audioSelected)
+        self.session.openWithCallback(self.audioSelected, VidioServiceBrowser)
 
-    def audioSelected(self, name, ref):
-        self.audioName = name
-        self.audioRef = ref
+    def audioSelected(self, selection=None, ref=None):
+        if ref is None:
+            if not selection:
+                return
+            try:
+                name, ref = selection
+            except Exception:
+                return
+        else:
+            name = selection
+        self.audioName = toText(name)
+        self.audioRef = toText(ref)
         self.refresh()
 
     def delayDown(self):
