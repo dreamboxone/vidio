@@ -23,11 +23,12 @@ trap 'rm -rf "$BUILD_DIR"' EXIT
 
 cp -a "$PROJECT_DIR/usr" "$BUILD_DIR/package/"
 cp "$PROJECT_DIR/IPK/control" "$BUILD_DIR/package/CONTROL/control"
+cp "$PROJECT_DIR/IPK/preinst" "$BUILD_DIR/package/CONTROL/preinst"
 cp "$PROJECT_DIR/IPK/postinst" "$BUILD_DIR/package/CONTROL/postinst"
 cp "$PROJECT_DIR/IPK/prerm" "$BUILD_DIR/package/CONTROL/prerm"
 find "$BUILD_DIR/package/usr" -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
 find "$BUILD_DIR/package/usr" -type d -name '__pycache__' -empty -delete
-chmod 755 "$BUILD_DIR/package/CONTROL/postinst" "$BUILD_DIR/package/CONTROL/prerm"
+chmod 755 "$BUILD_DIR/package/CONTROL/preinst" "$BUILD_DIR/package/CONTROL/postinst" "$BUILD_DIR/package/CONTROL/prerm"
 
 tar -czf "$BUILD_DIR/archive/control.tar.gz" --owner=0 --group=0 -C "$BUILD_DIR/package/CONTROL" .
 tar -czf "$BUILD_DIR/archive/data.tar.gz" --owner=0 --group=0 -C "$BUILD_DIR/package" --exclude=./CONTROL .

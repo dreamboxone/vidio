@@ -28,6 +28,7 @@ cp -a "$PROJECT_DIR/usr" "$STAGING/"
 find "$STAGING/usr" -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
 find "$STAGING/usr" -type d -name '__pycache__' -empty -delete
 
+chmod 755 "$STAGING/DEBIAN/preinst"
 chmod 755 "$STAGING/DEBIAN/postinst"
 chmod 755 "$STAGING/DEBIAN/prerm"
 

@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+PLUGIN_DIR=/usr/lib/enigma2/python/Plugins/Extensions/Vidio
+
+# An Enigma2 upgrade can otherwise reuse bytecode produced by an older plugin.
+if [ -d "$PLUGIN_DIR" ]; then
+    find "$PLUGIN_DIR" -type f \( -name '*.pyc' -o -name '*.pyo' \) -exec rm -f {} \; 2>/dev/null || true
+    rm -rf "$PLUGIN_DIR/__pycache__"
+fi
+
+exit 0

@@ -25,6 +25,21 @@ class PackagingTests(unittest.TestCase):
     def test_ipk_is_architecture_independent(self):
         self.assertEqual(control_value(ROOT / "IPK/control", "Architecture"), "all")
 
+    def test_upgrade_scripts_remove_stale_bytecode(self):
+        for package_dir in ("DEBIAN", "IPK"):
+            preinst = (ROOT / package_dir / "preinst").read_text(encoding="utf-8")
+            self.assertIn("Plugins/Extensions/Vidio", preinst)
+            self.assertIn("*.pyc", preinst)
+            self.assertIn("__pycache__", preinst)
+        ipk_builder = (ROOT / "build-ipk.sh").read_text(encoding="utf-8")
+        self.assertIn('IPK/preinst', ipk_builder)
+
+    def test_restart_falls_back_to_init_script(self):
+        for package_dir in ("DEBIAN", "IPK"):
+            postinst = (ROOT / package_dir / "postinst").read_text(encoding="utf-8")
+            self.assertIn("systemctl try-restart enigma2", postinst)
+            self.assertIn("/etc/init.d/enigma2 restart", postinst)
+
 
 if __name__ == "__main__":
     unittest.main()
