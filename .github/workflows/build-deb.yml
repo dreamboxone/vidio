@@ -19,7 +19,7 @@ jobs:
         run: make deb
 
       - name: Upload deb artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: vidio-deb
           path: dist/*.deb
