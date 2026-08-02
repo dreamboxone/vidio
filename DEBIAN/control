@@ -1,8 +1,8 @@
 Package: enigma2-plugin-extensions-vidio
-Version: 0.1.4
+Version: 0.2.0
 Architecture: arm64
 Maintainer: khava
 Section: misc
 Priority: optional
 Depends: enigma2, ffmpeg
-Description: Delayed-video dual-tuner audio replacement for DreamOS
+Description: Lossless dual-tuner video and replacement-audio remux for DreamOS

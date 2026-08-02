@@ -1,80 +1,67 @@
 # Vidio
 
-Vidio is an experimental DreamOS / OE 2.6 Enigma2 plugin for Dreambox One UHD
-and Dreambox Two UHD receivers.
+Vidio is a DreamOS / OE 2.6 Enigma2 plugin for Dreambox One UHD and Dreambox
+Two UHD. It keeps the video from the current DVB service, replaces its audio
+with a second DVB service, and can delay only the video in 0.1 second steps.
 
-It lets you watch the current video service while replacing its audio with the
-audio from a second service. The sync control only delays the current video by
-using Enigma2 timeshift. It does not delay or process the replacement audio.
-This is intended for cases where the Persian audio feed arrives several seconds
-later than the clean sports video feed.
+## How it works
 
-## Target
+Vidio opens the two DVB services through the receiver streaming server. ffmpeg
+maps only video from the current service and only audio from the selected
+service into a new local MPEG transport stream. The streams are copied without
+re-encoding. DreamOS plays that single local stream through its normal decoder
+and HDMI audio path.
 
-- Dreambox One UHD / Dreambox Two UHD
+The old ALSA injection and `selectTrack(-1)` design was removed in 0.2.0. Vidio
+now reports Running only after ffmpeg has produced packets and DreamOS has
+opened the combined stream.
+
+## Requirements
+
+- Dreambox One UHD or Dreambox Two UHD
 - DreamOS / OpenDreambox OE 2.6
-- Two usable tuners
-- `ffmpeg` installed at `/usr/bin/ffmpeg`
-- WebInterface enabled on `127.0.0.1:80`
-- Timeshift configured with writable HDD/USB storage at `/media/hdd` or `/media/usb`
+- Two correctly configured DVB tuners with access to both satellites
+- `/usr/bin/ffmpeg`
+- DreamOS streaming server on its standard local port `8001`
 
-## Install
+The common 5-10 second video delay is timestamp-based and does not require HDD
+or USB storage. Very large delays can require substantial player memory.
 
-Build the Dreambox `.deb` package on Linux, WSL, or GitHub Actions:
+## Build and install
 
 ```sh
+make lint
 make deb
 ```
 
-The package will be written to `dist/`, for example:
+The package is written to `dist/`:
 
 ```text
-dist/enigma2-plugin-extensions-vidio_0.1.4_arm64.deb
+dist/enigma2-plugin-extensions-vidio_0.2.0_arm64.deb
 ```
 
-Install it on the receiver:
+Install it and restart Enigma2:
 
 ```sh
-scp dist/enigma2-plugin-extensions-vidio_0.1.4_arm64.deb root@dreambox:/tmp/
-ssh root@dreambox "dpkg -i /tmp/enigma2-plugin-extensions-vidio_0.1.4_arm64.deb || apt-get -f install"
-```
-
-For manual testing, copy the plugin directory to the receiver:
-
-```sh
-scp -r usr/lib/enigma2/python/Plugins/Extensions/Vidio root@dreambox:/usr/lib/enigma2/python/Plugins/Extensions/
-```
-
-Restart Enigma2:
-
-```sh
+dpkg -i /tmp/enigma2-plugin-extensions-vidio_0.2.0_arm64.deb
 systemctl restart enigma2
 ```
 
-Open Vidio from the Plugins menu. It is inactive by default. After installation
-and GUI restart, a long press on the Audio key opens the same Vidio menu.
-
 ## Controls
 
-- `OK`: toggle Vidio On/Off or choose the selected audio service
-- `Left` / `Right`: adjust the selected Video delay option by 0.1 seconds
-- `Green`: save current settings and start if Vidio is On
-- `Red`: close
-- `Exit`: close
+- `OK` on Vidio: toggle On/Off
+- `OK` on Audio source: select a DVB service from bouquets or service lists
+- `Left` / `Right` on Video delay: adjust by 0.1 seconds
+- `Green`: save and apply
+- `Red` or `Exit`: close the menu
+- Long press `Audio`: open Vidio from live TV
 
-## Notes
+When Vidio is turned Off, or when ffmpeg/local playback fails, the original DVB
+service is restored. Runtime diagnostics are written to
+`/tmp/vidio-ffmpeg.log`.
 
-The first version intentionally uses the receiver's local stream URL with
-`ffmpeg` for the second-service audio:
+## Receiver constraints
 
-```text
-http://127.0.0.1/web/stream.m3u?ref=<service-reference>
-```
-
-This keeps audio service acquisition separate from the currently watched video
-service. Tuner availability is still checked and shown in the UI, but exact
-front-end allocation is ultimately decided by DreamOS.
-
-Positive audio delay is deliberately not implemented. If `Video delay` is set
-to `5.0`, Vidio buffers the current video for about five seconds and then plays
-the selected second-service audio live.
+DreamOS decides tuner and descrambler allocation. Starting can fail when the
+second tuner cannot access the selected satellite, another recording occupies
+it, or CI/softcam restrictions prevent two simultaneous decrypted streams.
