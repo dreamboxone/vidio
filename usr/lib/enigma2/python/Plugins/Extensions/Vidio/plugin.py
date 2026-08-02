@@ -11,7 +11,7 @@ except ImportError:
 from Components.ActionMap import ActionMap
 from Components.Label import Label
 from Components.MenuList import MenuList
-from Components.config import ConfigInteger, ConfigSubsection, ConfigText, config, configfile
+from Components.config import ConfigInteger, ConfigSubsection, ConfigText, ConfigYesNo, config, configfile
 from Plugins.Plugin import PluginDescriptor
 from Screens.MessageBox import MessageBox
 from Screens.Screen import Screen
@@ -26,8 +26,11 @@ PID_FILE = "/var/run/vidio-ffmpeg.pid"
 FFMPEG = "/usr/bin/ffmpeg"
 STREAM_URL = "http://127.0.0.1/web/stream.m3u?ref=%s"
 TIMESHIFT_PATHS = ("/media/hdd", "/media/usb")
+KEYMAP_FILE = os.path.join(os.path.dirname(__file__), "keymap.xml")
+KEYMAP_LOADED = False
 
 config.plugins.vidio = ConfigSubsection()
+config.plugins.vidio.enabled = ConfigYesNo(default=False)
 config.plugins.vidio.audio_ref = ConfigText(default="", fixed_size=False)
 config.plugins.vidio.audio_name = ConfigText(default="", fixed_size=False)
 config.plugins.vidio.video_delay_tenths = ConfigInteger(default=0, limits=(0, 600))
@@ -80,6 +83,56 @@ def killPreviousFfmpeg():
     try:
         os.unlink(PID_FILE)
     except OSError:
+        pass
+
+
+def openVidioFromInfoBar(infoBar):
+    try:
+        infoBar.session.open(VidioScreen)
+    except Exception:
+        pass
+
+
+def installInfoBarAction():
+    try:
+        from Screens.InfoBar import InfoBar
+    except Exception:
+        return
+
+    def addActionMap(instance):
+        try:
+            instance["VidioActions"] = ActionMap(
+                ["VidioActions"],
+                {"openVidio": lambda: openVidioFromInfoBar(instance)},
+                -1,
+            )
+        except Exception:
+            pass
+
+    if not getattr(InfoBar, "_vidioPatched", False):
+        originalInit = InfoBar.__init__
+
+        def patchedInit(self, *args, **kwargs):
+            originalInit(self, *args, **kwargs)
+            addActionMap(self)
+
+        InfoBar.__init__ = patchedInit
+        InfoBar._vidioPatched = True
+
+    instance = getattr(InfoBar, "instance", None)
+    if instance is not None:
+        addActionMap(instance)
+
+
+def loadVidioKeymap():
+    global KEYMAP_LOADED
+    if KEYMAP_LOADED or not fileExists(KEYMAP_FILE):
+        return
+    try:
+        import keymapparser
+        keymapparser.readKeymap(KEYMAP_FILE)
+        KEYMAP_LOADED = True
+    except Exception:
         pass
 
 
@@ -183,23 +236,23 @@ class VidioServiceBrowser(Screen):
 
 class VidioScreen(Screen):
     skin = """
-    <screen name="VidioScreen" position="center,center" size="900,430" title="Vidio">
-        <widget name="header" position="24,18" size="852,34" font="Regular;26" />
-        <widget name="status" position="24,64" size="852,80" font="Regular;21" />
-        <widget name="audio" position="24,158" size="852,34" font="Regular;24" />
-        <widget name="delay" position="24,206" size="852,34" font="Regular;24" />
-        <widget name="tuner" position="24,254" size="852,58" font="Regular;21" />
-        <ePixmap pixmap="skin_default/buttons/red.png" position="24,358" size="140,40" alphatest="on" />
-        <ePixmap pixmap="skin_default/buttons/green.png" position="184,358" size="140,40" alphatest="on" />
-        <widget name="red" position="24,358" size="140,40" font="Regular;20" halign="center" valign="center" transparent="1" />
-        <widget name="green" position="184,358" size="140,40" font="Regular;20" halign="center" valign="center" transparent="1" />
-        <widget name="help" position="344,362" size="532,32" font="Regular;20" />
+    <screen name="VidioScreen" position="center,center" size="820,430" title="Vidio">
+        <widget name="header" position="24,18" size="772,34" font="Regular;26" />
+        <widget name="status" position="24,58" size="772,54" font="Regular;20" />
+        <widget name="list" position="24,122" size="772,174" font="Regular;24" scrollbarMode="showOnDemand" />
+        <widget name="note" position="24,310" size="772,32" font="Regular;19" />
+        <ePixmap pixmap="skin_default/buttons/red.png" position="24,364" size="140,40" alphatest="on" />
+        <ePixmap pixmap="skin_default/buttons/green.png" position="184,364" size="140,40" alphatest="on" />
+        <widget name="red" position="24,364" size="140,40" font="Regular;20" halign="center" valign="center" transparent="1" />
+        <widget name="green" position="184,364" size="140,40" font="Regular;20" halign="center" valign="center" transparent="1" />
+        <widget name="help" position="344,368" size="452,28" font="Regular;18" />
     </screen>
     """
 
     def __init__(self, session):
         Screen.__init__(self, session)
         self.container = eConsoleAppContainer()
+        self.enabled = bool(config.plugins.vidio.enabled.value)
         self.delayTenths = int(config.plugins.vidio.video_delay_tenths.value)
         self.audioName = config.plugins.vidio.audio_name.value
         self.audioRef = config.plugins.vidio.audio_ref.value
@@ -209,17 +262,18 @@ class VidioScreen(Screen):
 
         self["header"] = Label("Vidio %s" % PLUGIN_VERSION)
         self["status"] = Label("")
-        self["audio"] = Label("")
-        self["delay"] = Label("")
-        self["tuner"] = Label("")
+        self["list"] = MenuList([])
+        self["note"] = Label("")
         self["red"] = Label("Stop")
         self["green"] = Label("Save")
-        self["help"] = Label("OK: audio service    Left/Right: video delay 0.1s    Exit: close")
+        self["help"] = Label("OK select/toggle   Green save   Exit close")
         self["actions"] = ActionMap(
             ["OkCancelActions", "DirectionActions", "ColorActions"],
             {
-                "ok": self.chooseAudio,
+                "ok": self.ok,
                 "cancel": self.close,
+                "up": self.up,
+                "down": self.down,
                 "left": self.delayDown,
                 "right": self.delayUp,
                 "green": self.save,
@@ -231,12 +285,27 @@ class VidioScreen(Screen):
         self.onClose.append(self.cleanup)
 
     def refresh(self):
-        current = currentServiceReference(self.session)
-        audio = self.audioName or "No audio service selected"
-        self["audio"].setText("Audio source: %s" % audio)
-        self["delay"].setText("Video delay: %.1f seconds" % (self.delayTenths / 10.0))
-        self["tuner"].setText(self.tunerStatus(current))
+        try:
+            selected = self["list"].getSelectedIndex()
+        except Exception:
+            selected = 0
+        self["list"].setList(self.menuItems())
+        try:
+            self["list"].moveToIndex(selected)
+        except Exception:
+            pass
+        self["note"].setText("Long-press Audio opens this menu from live TV.")
         self["status"].setText(self.statusText())
+
+    def menuItems(self):
+        audio = self.audioName or "No audio service selected"
+        state = "On" if self.enabled else "Off"
+        running = "running" if self.started else "stopped"
+        return [
+            "Vidio: %s (%s)" % (state, running),
+            "Audio source: %s" % audio,
+            "Video delay: %.1f seconds  < >" % (self.delayTenths / 10.0),
+        ]
 
     def statusText(self):
         if not fileExists(FFMPEG):
@@ -244,21 +313,37 @@ class VidioScreen(Screen):
         if not self.audioRef:
             return "Select a second service for replacement audio."
         if self.delayTenths > 0 and not timeshiftStoragePath():
-            return "Video delay needs writable timeshift storage at /media/hdd or /media/usb."
+            return "Video delay needs writable HDD or USB storage."
         if self.started:
-            return "Running. Current channel audio should be muted/replaced by the selected service."
-        return "Ready. Press Green to save and start."
+            return "Running. Current audio is replaced by the selected service."
+        return "Ready. Turn Vidio On, choose audio, set delay, then press Green."
 
-    def tunerStatus(self, current):
-        if not current:
-            return "Current video service: unknown"
-        same = current == self.audioRef
-        text = "Current video ref: %s" % current[:95]
-        if same:
-            text += "\nAudio source is the current service; choose a different tuner/service."
-        else:
-            text += "\nDreamOS will allocate the second service if a tuner is free or compatible."
-        return text
+    def selectedIndex(self):
+        try:
+            return self["list"].getSelectedIndex()
+        except Exception:
+            return 0
+
+    def up(self):
+        self["list"].up()
+
+    def down(self):
+        self["list"].down()
+
+    def ok(self):
+        index = self.selectedIndex()
+        if index == 0:
+            self.enabled = not self.enabled
+            if not self.enabled:
+                self.stop()
+            else:
+                self.refresh()
+            return
+        if index == 1:
+            self.chooseAudio()
+            return
+        if index == 2:
+            self.delayUp()
 
     def chooseAudio(self):
         self.session.open(VidioServiceBrowser, callback=self.audioSelected)
@@ -269,25 +354,35 @@ class VidioScreen(Screen):
         self.refresh()
 
     def delayDown(self):
+        if self.selectedIndex() != 2:
+            return
         if self.delayTenths > 0:
             self.delayTenths -= 1
         self.refresh()
 
     def delayUp(self):
+        if self.selectedIndex() != 2:
+            return
         if self.delayTenths < 600:
             self.delayTenths += 1
         self.refresh()
 
     def save(self):
         ensureConfigDir()
+        config.plugins.vidio.enabled.value = bool(self.enabled)
         config.plugins.vidio.audio_name.value = self.audioName
         config.plugins.vidio.audio_ref.value = self.audioRef
         config.plugins.vidio.video_delay_tenths.value = int(self.delayTenths)
         config.plugins.vidio.save()
         configfile.save()
-        self.start()
+        if self.enabled:
+            self.start()
+        else:
+            self.stop()
 
     def start(self):
+        if not self.enabled:
+            return
         if not self.audioRef:
             self.session.open(MessageBox, "Select an audio service first.", MessageBox.TYPE_INFO, timeout=5)
             return
@@ -297,7 +392,7 @@ class VidioScreen(Screen):
         if self.delayTenths > 0 and not timeshiftStoragePath():
             self.session.open(
                 MessageBox,
-                "Video delay needs writable timeshift storage at /media/hdd or /media/usb.",
+                "Video delay needs writable HDD or USB storage.",
                 MessageBox.TYPE_ERROR,
             )
             return
@@ -393,6 +488,7 @@ class VidioScreen(Screen):
         except Exception:
             pass
         self.restoreCurrentServiceAudio()
+        self.enabled = False
         self.started = False
         self.refresh()
 
@@ -405,6 +501,9 @@ def openVidio(session, **kwargs):
 
 
 def autostart(reason, **kwargs):
+    if reason == 0:
+        loadVidioKeymap()
+        installInfoBarAction()
     if reason == 1:
         killPreviousFfmpeg()
 
@@ -416,6 +515,7 @@ def Plugins(**kwargs):
             description="Replace current audio with another service and delay video",
             where=PluginDescriptor.WHERE_PLUGINMENU,
             fnc=openVidio,
+            icon="plugin.png",
         ),
         PluginDescriptor(
             name=PLUGIN_NAME,

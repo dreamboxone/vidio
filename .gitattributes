@@ -4,6 +4,7 @@
 Makefile text eol=lf
 DEBIAN/postinst text eol=lf
 DEBIAN/prerm text eol=lf
+DEBIAN/control text eol=lf
 *.py text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
