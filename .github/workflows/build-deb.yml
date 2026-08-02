@@ -1,0 +1,25 @@
+name: Build deb
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint plugin syntax
+        run: make lint
+
+      - name: Build deb package
+        run: make deb
+
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vidio-deb
+          path: dist/*.deb
