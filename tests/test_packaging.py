@@ -40,6 +40,13 @@ class PackagingTests(unittest.TestCase):
             self.assertIn("systemctl try-restart enigma2", postinst)
             self.assertIn("/etc/init.d/enigma2 restart", postinst)
 
+    def test_optional_enigma_events_are_feature_detected(self):
+        plugin = (ROOT / "usr/lib/enigma2/python/Plugins/Extensions/Vidio/plugin.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('getattr(iPlayableService, "evVideoPtsValid", None)', plugin)
+        self.assertNotIn("event == iPlayableService.evVideoPtsValid", plugin)
+
 
 if __name__ == "__main__":
     unittest.main()

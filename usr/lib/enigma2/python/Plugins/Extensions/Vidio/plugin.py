@@ -23,6 +23,12 @@ FFMPEG = "/usr/bin/ffmpeg"
 KEYMAP_FILE = os.path.join(os.path.dirname(__file__), "keymap.xml")
 KEYMAP_LOADED = False
 
+EV_START = getattr(iPlayableService, "evStart", None)
+EV_VIDEO_PTS_VALID = getattr(iPlayableService, "evVideoPtsValid", None)
+EV_UPDATED_INFO = getattr(iPlayableService, "evUpdatedInfo", None)
+EV_TUNE_FAILED = getattr(iPlayableService, "evTuneFailed", None)
+EV_EOF = getattr(iPlayableService, "evEOF", None)
+
 config.plugins.vidio = ConfigSubsection()
 config.plugins.vidio.enabled = ConfigYesNo(default=False)
 config.plugins.vidio.audio_ref = ConfigText(default="", fixed_size=False)
@@ -293,16 +299,16 @@ class VidioEngine(object):
         if self.stopping or not self.container or not self.localRef:
             return
         self.localRequested = True
-        self._setState(self.BUFFERING, "Opening the combined DreamOS stream...")
+        self._setState(self.BUFFERING, "Opening the combined Enigma2 stream...")
         try:
             result = self.session.nav.playService(self.localRef, False, True)
         except TypeError:
             result = self.session.nav.playService(self.localRef)
         except Exception as error:
-            self.fail("DreamOS could not open the local stream: %s" % error)
+            self.fail("Enigma2 could not open the local stream: %s" % error)
             return
         if result not in (None, 0):
-            self.fail("DreamOS rejected the local combined stream.")
+            self.fail("Enigma2 rejected the local combined stream.")
             return
         self._schedule(self._confirmLocalPlayback, 8000)
 
@@ -320,13 +326,17 @@ class VidioEngine(object):
         return DEFAULT_OUTPUT_URL in ref.toString()
 
     def _confirmLocalPlayback(self):
-        if self._isLocalCurrent() and self.container and self.outputReady and self.videoConfirmed:
+        # OE-Alliance images do not expose DreamOS' evVideoPtsValid event. In
+        # that case, current-service identity plus live ffmpeg output is the
+        # strongest portable confirmation available from Enigma2's Python API.
+        videoReady = self.videoConfirmed or EV_VIDEO_PTS_VALID is None
+        if self._isLocalCurrent() and self.container and self.outputReady and videoReady:
             self._setState(
                 self.RUNNING,
                 "Running. %s video with %s audio." % (self.sourceVideoName, self.audioName),
             )
             return
-        self.fail("DreamOS did not start the local combined stream.")
+        self.fail("Enigma2 did not start the local combined stream.")
 
     def _startupTimedOut(self):
         detail = concise_ffmpeg_error(self.log)
@@ -342,17 +352,25 @@ class VidioEngine(object):
             self.fail("ffmpeg stopped (code %s). %s" % (returnCode, detail))
 
     def _navEvent(self, event):
-        if event == iPlayableService.evStart:
+        if EV_START is not None and event == EV_START:
             if self.state == self.RUNNING and not self._isLocalCurrent():
                 self.stop(restore=False)
-        elif event == iPlayableService.evVideoPtsValid:
+
+        confirmsVideo = EV_VIDEO_PTS_VALID is not None and event == EV_VIDEO_PTS_VALID
+        if EV_VIDEO_PTS_VALID is None:
+            confirmsVideo = event in tuple(
+                value for value in (EV_START, EV_UPDATED_INFO) if value is not None
+            )
+        if confirmsVideo:
             if self.localRequested and self._isLocalCurrent() and self.outputReady:
                 self.videoConfirmed = True
                 self.timer.stop()
                 self._confirmLocalPlayback()
-        elif event in (iPlayableService.evTuneFailed, iPlayableService.evEOF):
+
+        failureEvents = tuple(value for value in (EV_TUNE_FAILED, EV_EOF) if value is not None)
+        if event in failureEvents:
             if self.localRequested and self.state in (self.BUFFERING, self.RUNNING):
-                self.fail("The local combined stream stopped in DreamOS.")
+                self.fail("The local combined stream stopped in Enigma2.")
 
     def fail(self, message, restore=True):
         self.lastError = message

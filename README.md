@@ -39,21 +39,21 @@ make packages
 Both packages are written to `dist/`:
 
 ```text
-dist/enigma2-plugin-extensions-vidio_0.2.2_arm64.deb
-dist/enigma2-plugin-extensions-vidio_0.2.2_all.ipk
+dist/enigma2-plugin-extensions-vidio_0.2.3_arm64.deb
+dist/enigma2-plugin-extensions-vidio_0.2.3_all.ipk
 ```
 
 Install the DreamOS package:
 
 ```sh
-dpkg -i /tmp/enigma2-plugin-extensions-vidio_0.2.2_arm64.deb
+dpkg -i /tmp/enigma2-plugin-extensions-vidio_0.2.3_arm64.deb
 systemctl restart enigma2
 ```
 
 Install the ARM32/MIPS package:
 
 ```sh
-opkg install /tmp/enigma2-plugin-extensions-vidio_0.2.2_all.ipk
+opkg install /tmp/enigma2-plugin-extensions-vidio_0.2.3_all.ipk
 ```
 
 `Architecture: all` is intentional: Vidio contains Python and image assets but
