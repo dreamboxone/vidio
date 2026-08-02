@@ -239,7 +239,7 @@ class VidioScreen(Screen):
     <screen name="VidioScreen" position="center,center" size="820,430" title="Vidio">
         <widget name="header" position="24,18" size="772,34" font="Regular;26" />
         <widget name="status" position="24,58" size="772,54" font="Regular;20" />
-        <widget name="list" position="24,122" size="772,174" font="Regular;24" scrollbarMode="showOnDemand" />
+        <widget name="list" position="24,122" size="772,174" scrollbarMode="showOnDemand" />
         <widget name="note" position="24,310" size="772,32" font="Regular;19" />
         <ePixmap pixmap="skin_default/buttons/red.png" position="24,364" size="140,40" alphatest="on" />
         <ePixmap pixmap="skin_default/buttons/green.png" position="184,364" size="140,40" alphatest="on" />
