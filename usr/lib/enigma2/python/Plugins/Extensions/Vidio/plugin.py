@@ -238,10 +238,8 @@ class VidioScreen(Screen):
         <widget name="status" position="24,58" size="772,54" font="Regular;20" />
         <widget name="list" position="24,122" size="772,174" scrollbarMode="showOnDemand" />
         <widget name="note" position="24,310" size="772,32" font="Regular;19" />
-        <ePixmap pixmap="skin_default/buttons/red.png" position="24,364" size="140,40" alphatest="on" />
-        <ePixmap pixmap="skin_default/buttons/green.png" position="184,364" size="140,40" alphatest="on" />
-        <widget name="red" position="24,364" size="140,40" font="Regular;20" halign="center" valign="center" transparent="1" />
-        <widget name="green" position="184,364" size="140,40" font="Regular;20" halign="center" valign="center" transparent="1" />
+        <widget name="red" position="24,364" size="140,40" font="Regular;20" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#b01818" transparent="0" />
+        <widget name="green" position="184,364" size="140,40" font="Regular;20" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#008a00" transparent="0" />
         <widget name="help" position="344,368" size="452,28" font="Regular;18" />
     </screen>
     """
@@ -312,7 +310,7 @@ class VidioScreen(Screen):
         if self.delayTenths > 0 and not timeshiftStoragePath():
             return "Video delay needs writable HDD or USB storage."
         if self.started:
-            return "Running. Current audio is replaced by the selected service."
+            return "Running. Replacement audio started."
         return "Ready. Turn Vidio On, choose audio, set delay, then press Green."
 
     def selectedIndex(self):
@@ -462,19 +460,15 @@ class VidioScreen(Screen):
             service = self.session.nav.getCurrentService()
             tracks = service and service.audioTracks()
             if not tracks:
-                return
+                return False
             try:
                 self.originalAudioTrack = tracks.getCurrentTrack()
             except Exception:
                 self.originalAudioTrack = None
             tracks.selectTrack(-1)
+            return True
         except Exception:
-            self.session.open(
-                MessageBox,
-                "Could not disable the current service audio. If you hear both channels, mute this service manually for this test.",
-                MessageBox.TYPE_INFO,
-                timeout=7,
-            )
+            return False
 
     def restoreCurrentServiceAudio(self):
         if self.originalAudioTrack is None:
