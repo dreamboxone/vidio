@@ -10,7 +10,7 @@ PACKAGE_NAME="$(sed -n 's/^Package:[[:space:]]*//p' "$CONTROL_FILE" | head -n 1)
 PACKAGE_VERSION="$(sed -n 's/^Version:[[:space:]]*//p' "$CONTROL_FILE" | head -n 1)"
 PACKAGE_ARCH="$(sed -n 's/^Architecture:[[:space:]]*//p' "$CONTROL_FILE" | head -n 1)"
 
-for command_name in dpkg-deb chmod mkdir cp; do
+for command_name in dpkg-deb chmod mkdir cp find; do
     command -v "$command_name" >/dev/null 2>&1 || {
         echo "$command_name is required." >&2
         exit 1
@@ -25,6 +25,8 @@ trap 'rm -rf "$BUILD_DIR"' EXIT
 mkdir -p "$STAGING"
 cp -a "$PROJECT_DIR/DEBIAN" "$STAGING/"
 cp -a "$PROJECT_DIR/usr" "$STAGING/"
+find "$STAGING/usr" -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
+find "$STAGING/usr" -type d -name '__pycache__' -empty -delete
 
 chmod 755 "$STAGING/DEBIAN/postinst"
 chmod 755 "$STAGING/DEBIAN/prerm"

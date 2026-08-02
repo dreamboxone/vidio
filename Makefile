@@ -9,7 +9,7 @@ deb:
 	./build.sh "$(DIST_DIR)"
 
 lint:
-	python3 -m py_compile usr/lib/enigma2/python/Plugins/Extensions/Vidio/plugin.py usr/lib/enigma2/python/Plugins/Extensions/Vidio/core.py usr/lib/enigma2/python/Plugins/Extensions/Vidio/__init__.py
+	PYTHONPYCACHEPREFIX="$(CURDIR)/.build/pycache" python3 -m py_compile usr/lib/enigma2/python/Plugins/Extensions/Vidio/plugin.py usr/lib/enigma2/python/Plugins/Extensions/Vidio/core.py usr/lib/enigma2/python/Plugins/Extensions/Vidio/__init__.py
 	python3 -m unittest discover -s tests -v
 
 clean:
